@@ -5,31 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Casino Roulette</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
-        #wheel { width: 300px; height: 300px; background: #333; border-radius: 50%; margin: 20px auto; transition: transform 4s ease-out; }
-        .roulette-table { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; max-width: 800px; margin: 20px auto; }
-        .number { background: #444; padding: 10px; cursor: pointer; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; background: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==') repeat; }
+        #login { display: block; }
+        #game { display: none; }
+        #userInfo { margin: 10px 0; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
+        #wheel { width: 200px; height: 200px; background: conic-gradient(#ff4500 0% 9%, #32cd32 9% 18%, #ff4500 18% 27%, #000 27% 36%, #ff4500 36% 45%, #32cd32 45% 54%, #ff4500 54% 63%, #000 63% 72%, #ff4500 72% 81%, #32cd32 81% 90%, #ff4500 90% 100%); border-radius: 50%; margin: 20px auto; position: relative; overflow: hidden; }
+        #ball { width: 15px; height: 15px; background: white; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; box-shadow: 0 0 10px white; }
+        .landing-spot { width: 20px; height: 20px; background: transparent; position: absolute; border: 2px dashed rgba(255, 255, 255, 0.3); }
+        .roulette-table { display: grid; grid-template-columns: repeat(12, 1fr); gap: 2px; max-width: 800px; margin: 20px auto; background: #333; padding: 10px; border-radius: 5px; }
+        .number { background: #444; padding: 10px; cursor: pointer; transition: all 0.3s; }
         .red { background: #ff4444; }
         .black { background: #000; color: white; }
         .green { background: #00cc00; }
-        .bet-option { background: #555; padding: 10px; cursor: pointer; }
-        .bet-option:hover, .number:hover { background: #777; }
-        #chips { display: flex; justify-content: center; gap: 10px; }
-        .chip { padding: 10px 20px; background: #ffd700; color: black; border-radius: 50%; cursor: pointer; }
-        @media (max-width: 600px) { #wheel { width: 100%; height: auto; } .roulette-table { grid-template-columns: repeat(6, 1fr); } }
+        .bet-option { background: #555; padding: 10px; cursor: pointer; transition: all 0.3s; }
+        .bet-option:hover, .number:hover { background: #777; transform: scale(1.1); }
+        #chips { display: flex; justify-content: center; gap: 10px; margin: 10px 0; }
+        .chip { padding: 10px 20px; background: #ffd700; color: black; border-radius: 50%; cursor: pointer; transition: all 0.3s; box-shadow: 0 0 5px #ffd700; }
+        .chip:hover { transform: scale(1.2); box-shadow: 0 0 10px #ffd700; }
+        #resultBox { width: 100px; height: 50px; background: #ffd700; margin: 10px auto; line-height: 50px; font-size: 20px; border-radius: 5px; animation: blink 1s infinite; }
+        @media (max-width: 600px) { #wheel { width: 150px; height: 150px; } .roulette-table { grid-template-columns: repeat(6, 1fr); } }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(3600deg); } }
+        @keyframes ballSpin { 0% { transform: translate(-50%, -50%) rotate(0deg); opacity: 1; } 70% { transform: translate(-50%, -50%) rotate(2520deg); opacity: 0.8; } 100% { transform: translate(-120%, -120%) rotate(3600deg); opacity: 0; } }
+        @keyframes ballLand { 0% { transform: translate(-120%, -120%) scale(1); opacity: 0; } 50% { transform: translate(-120%, -120%) scale(1.2); opacity: 1; } 100% { transform: translate(-120%, -120%) scale(1); opacity: 1; } }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        @keyframes fadeInOut { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
 </head>
 <body>
-    <div id="login" style="display: block;">
+    <div id="login">
         <h1>Casino Roulette</h1>
         <input type="text" id="phone" placeholder="ဖုန်းနံပါတ်">
         <input type="password" id="pin" placeholder="PIN">
-        <button onclick="login()">အကောင့်ဖွင့် / ဝင်ရောက်မည်</button>
+        <button onclick="login()">အကောင့်ဖွင့်</button>
     </div>
-    <div id="game" style="display: none;">
-        <h1>Casino Roulette</h1>
-        <div id="wheel"></div>
-        <button onclick="spinWheel()">လှည့်မည်</button>
+    <div id="game">
+        <div id="userInfo">
+            <p>UserID: <span id="userId">...</span></p>
+            <p>Phone: <span id="userPhone">...</span></p>
+            <p>Play Time: <span id="playTime">...</span></p>
+            <p>Balance: <span id="balance">0 ကျပ်</span></p>
+            <button onclick="logout()">Log Out</button>
+        </div>
+        <h2>Game Time: <span id="gameTime">30</span> စက္ကန့်</h2>
+        <div id="wheel"><div id="ball"></div><div id="landingSpot" class="landing-spot"></div></div>
         <div class="roulette-table">
             <div class="green number" onclick="placeBet('0')">0</div>
             <div class="red number" onclick="placeBet('1')">1</div>
@@ -44,108 +62,202 @@
             <div class="black number" onclick="placeBet('10')">10</div>
             <div class="black number" onclick="placeBet('11')">11</div>
             <div class="red number" onclick="placeBet('12')">12</div>
-            <!-- နံပါတ် 13-36 အထိ ဆက်ရေးနိုင်ပါတယ်၊ နေရာချွေတာလို့ ဒီမှာ ဖြတ်ထားပါတယ် -->
+            <div class="red number" onclick="placeBet('13')">13</div>
+            <div class="black number" onclick="placeBet('14')">14</div>
+            <div class="red number" onclick="placeBet('15')">15</div>
+            <div class="black number" onclick="placeBet('16')">16</div>
+            <div class="red number" onclick="placeBet('17')">17</div>
+            <div class="black number" onclick="placeBet('18')">18</div>
+            <div class="red number" onclick="placeBet('19')">19</div>
+            <div class="black number" onclick="placeBet('20')">20</div>
+            <div class="red number" onclick="placeBet('21')">21</div>
+            <div class="black number" onclick="placeBet('22')">22</div>
+            <div class="red number" onclick="placeBet('23')">23</div>
+            <div class="black number" onclick="placeBet('24')">24</div>
+            <div class="red number" onclick="placeBet('25')">25</div>
+            <div class="black number" onclick="placeBet('26')">26</div>
+            <div class="red number" onclick="placeBet('27')">27</div>
+            <div class="black number" onclick="placeBet('28')">28</div>
+            <div class="black number" onclick="placeBet('29')">29</div>
+            <div class="red number" onclick="placeBet('30')">30</div>
+            <div class="black number" onclick="placeBet('31')">31</div>
+            <div class="red number" onclick="placeBet('32')">32</div>
+            <div class="black number" onclick="placeBet('33')">33</div>
+            <div class="red number" onclick="placeBet('34')">34</div>
+            <div class="black number" onclick="placeBet('35')">35</div>
+            <div class="red number" onclick="placeBet('36')">36</div>
+            <div class="bet-option" onclick="placeBet('1st12')">1st 12</div>
+            <div class="bet-option" onclick="placeBet('2nd12')">2nd 12</div>
+            <div class="bet-option" onclick="placeBet('3rd12')">3rd 12</div>
+            <div class="bet-option" onclick="placeBet('1to18')">1 to 18</div>
+            <div class="bet-option" onclick="placeBet('even')">Even</div>
             <div class="bet-option" onclick="placeBet('red')">Red</div>
             <div class="bet-option" onclick="placeBet('black')">Black</div>
             <div class="bet-option" onclick="placeBet('odd')">Odd</div>
-            <div class="bet-option" onclick="placeBet('even')">Even</div>
-            <div class="bet-option" onclick="placeBet('1-18')">1-18</div>
-            <div class="bet-option" onclick="placeBet('19-36')">19-36</div>
+            <div class="bet-option" onclick="placeBet('19to36')">19 to 36</div>
         </div>
         <div id="chips">
-            <div class="chip" onclick="selectChip(1000)">1000 ကျပ်</div>
-            <div class="chip" onclick="selectChip(5000)">5000 ကျပ်</div>
-            <div class="chip" onclick="selectChip(10000)">10000 ကျပ်</div>
+            <div class="chip" onclick="selectChip(1000)">1K</div>
+            <div class="chip" onclick="selectChip(5000)">5K</div>
+            <div class="chip" onclick="selectChip(10000)">10K</div>
+            <div class="chip" onclick="selectChip(50000)">50K</div>
+            <div class="chip" onclick="selectChip(100000)">100K</div>
+            <div class="chip" onclick="selectChip(1000000)">1M</div>
         </div>
-        <p>Balance: <span id="balance">0 ကျပ်</span></p>
-        <button onclick="depositRequest()">ငွေသွင်းမည်</button>
-        <button onclick="withdrawRequest()">ငွေထုတ်မည်</button>
+        <div id="resultBox">...</div>
     </div>
+    <div id="serverMsg" style="display: none; color: red; font-size: 24px; animation: fadeInOut 2s infinite;">Server ခနစောင့်ပါ...</div>
     <script>
         let users = JSON.parse(localStorage.getItem('users')) || {};
-        let currentPhone = '';
+        let currentUser = null;
         let currentBet = {};
         let selectedChip = 0;
+        let gameTime = 30;
+        let gameActive = false;
+        let adminPassword = "admin123";
+        let landingAngle = 0;
 
         function login() {
             const phone = document.getElementById('phone').value;
             const pin = document.getElementById('pin').value;
             if (!users[phone]) {
-                users[phone] = { pin: pin, balance: 0 };
+                users[phone] = { pin: pin, balance: 0, playTime: 0, bets: [], history: [] };
                 localStorage.setItem('users', JSON.stringify(users));
             }
             if (users[phone].pin === pin) {
-                currentPhone = phone;
+                currentUser = phone;
                 document.getElementById('login').style.display = 'none';
                 document.getElementById('game').style.display = 'block';
-                updateBalance();
+                updateUserInfo();
+                startGame();
+                playBackgroundMusic();
             } else {
                 alert('PIN မမှန်ပါ');
             }
         }
 
+        function updateUserInfo() {
+            if (currentUser) {
+                document.getElementById('userId').innerText = `User${currentUser.slice(-4)}`;
+                document.getElementById('userPhone').innerText = currentUser;
+                document.getElementById('balance').innerText = `${users[currentUser].balance} ကျပ်`;
+                users[currentUser].playTime += 1;
+                localStorage.setItem('users', JSON.stringify(users));
+            }
+        }
+
         function selectChip(amount) {
             selectedChip = amount;
-            alert(`သင်ရွေးထားသော ချစ်ပ်: ${amount} ကျပ်`);
+            alert(`ရွေးထားသော ချစ်ပ်: ${amount} ကျပ်`);
         }
 
         function placeBet(type) {
-            if (!selectedChip) {
-                alert('ချစ်ပ် အရင်ရွေးပါ');
-                return;
-            }
-            if (users[currentPhone].balance < selectedChip) {
+            if (!selectedChip || !gameActive) return;
+            if (users[currentUser].balance < selectedChip) {
                 alert('ငွေလုံလောက်မှု မရှိပါ');
                 return;
             }
-            currentBet = { type: type, amount: selectedChip };
-            users[currentPhone].balance -= selectedChip;
-            updateBalance();
+            currentBet = { type: type, amount: selectedChip, user: currentUser };
+            users[currentUser].balance -= selectedChip;
+            users[currentUser].bets.push(currentBet);
+            updateUserInfo();
+        }
+
+        function startGame() {
+            gameActive = true;
+            document.getElementById('serverMsg').style.display = 'none';
+            let time = setInterval(() => {
+                gameTime--;
+                document.getElementById('gameTime').innerText = gameTime;
+                if (gameTime <= 0) {
+                    clearInterval(time);
+                    spinWheel();
+                    gameTime = 30;
+                }
+            }, 1000);
         }
 
         function spinWheel() {
-            if (!currentBet.amount) {
-                alert('ထိုးမည့်အမျိုးအစား ရွေးပါ');
-                return;
-            }
             const wheel = document.getElementById('wheel');
-            const result = Math.floor(Math.random() * 37); // 0-36
-            wheel.style.transform = `rotate(${Math.random() * 3600 + result * 9.73}deg)`;
-            setTimeout(() => calculatePayout(result), 4000);
+            const ball = document.getElementById('ball');
+            const landingSpot = document.getElementById('landingSpot');
+            ball.style.display = 'block';
+            let result = Math.floor(Math.random() * 37);
+            landingAngle = (result * 9.73) + (Math.random() * 10 - 5); // Random slight variation
+            wheel.style.animation = 'spin 4s ease-out';
+            ball.style.animation = 'ballSpin 4s ease-out forwards';
+            setTimeout(() => {
+                wheel.style.transform = `rotate(${landingAngle}deg)`;
+                ball.style.animation = 'ballLand 1s ease-out forwards';
+                landingSpot.style.transform = `rotate(${landingAngle}deg) translateX(80px)`;
+                setTimeout(() => {
+                    wheel.style.animation = '';
+                    ball.style.animation = '';
+                    ball.style.display = 'none';
+                    landingSpot.style.transform = '';
+                    document.getElementById('resultBox').innerText = result;
+                    calculatePayout(result);
+                    gameActive = false;
+                    setTimeout(() => startGame(), 2000); // 2 seconds delay before next game
+                }, 1000);
+            }, 4000);
+            // Spin sound
+            let spinSound = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with actual base64 encoded MP3 (e.g., spin sound)
+            spinSound.play();
         }
 
         function calculatePayout(result) {
             let payout = 0;
-            const betType = currentBet.type;
-            if (betType === result.toString()) payout = currentBet.amount * 35; // Straight bet
-            else if (betType === 'red' && [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result)) payout = currentBet.amount * 1;
-            else if (betType === 'black' && ![0,1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result)) payout = currentBet.amount * 1;
-            else if (betType === 'odd' && result % 2 === 1) payout = currentBet.amount * 1;
-            else if (betType === 'even' && result % 2 === 0 && result !== 0) payout = currentBet.amount * 1;
-            else if (betType === '1-18' && result <= 18 && result !== 0) payout = currentBet.amount * 1;
-            else if (betType === '19-36' && result >= 19) payout = currentBet.amount * 1;
-
+            users[currentUser].bets.forEach(bet => {
+                if (bet.type === result.toString()) payout += bet.amount * 35; // Straight bet
+                else if (bet.type === 'red' && [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result)) payout += bet.amount * 1;
+                else if (bet.type === 'black' && ![1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(result) && result !== 0) payout += bet.amount * 1;
+                else if (bet.type === 'odd' && result % 2 === 1 && result !== 0) payout += bet.amount * 1;
+                else if (bet.type === 'even' && result % 2 === 0 && result !== 0) payout += bet.amount * 1;
+                else if (bet.type === '1to18' && result <= 18 && result !== 0) payout += bet.amount * 1;
+                else if (bet.type === '19to36' && result >= 19) payout += bet.amount * 1;
+                else if (bet.type === '1st12' && result >= 1 && result <= 12) payout += bet.amount * 2;
+                else if (bet.type === '2nd12' && result >= 13 && result <= 24) payout += bet.amount * 2;
+                else if (bet.type === '3rd12' && result >= 25 && result <= 36) payout += bet.amount * 2;
+            });
             if (payout > 0) {
-                users[currentPhone].balance += payout + currentBet.amount;
+                users[currentUser].balance += payout + (users[currentUser].bets.reduce((sum, bet) => sum + bet.amount, 0));
+                users[currentUser].history.push({ date: new Date().toLocaleDateString(), amount: payout, type: 'win' });
                 alert(`အနိုင်ရရှိပါတယ်! ရလဒ်: ${result}, ရရှိသောပမာဏ: ${payout} ကျပ်`);
             } else {
+                users[currentUser].history.push({ date: new Date().toLocaleDateString(), amount: users[currentUser].bets.reduce((sum, bet) => sum + bet.amount, 0), type: 'loss' });
                 alert(`ရှုံးသွားပါပြီ! ရလဒ်: ${result}`);
             }
-            currentBet = {};
-            updateBalance();
-        }
-
-        function updateBalance() {
-            document.getElementById('balance').innerText = `${users[currentPhone].balance} ကျပ်`;
+            users[currentUser].bets = [];
+            updateUserInfo();
             localStorage.setItem('users', JSON.stringify(users));
+            clearOldHistory();
         }
 
-        function depositRequest() {
-            alert(`ငွေသွင်းရန် Admin ထံ တောင်းဆိုပြီးပါပြီ: ${currentPhone}`);
+        function clearOldHistory() {
+            users[currentUser].history = users[currentUser].history.filter(h => {
+                const date = new Date(h.date);
+                return (new Date() - date) < 86400000; // 1 day in milliseconds
+            });
         }
 
-        function withdrawRequest() {
-            alert(`ငွေထုတ်ရန် Admin ထံ တောင်းဆိုပြီးပါပြီ: ${currentPhone}`);
+        function logout() {
+            currentUser = null;
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('login').style.display = 'block';
+            stopBackgroundMusic();
+        }
+
+        function playBackgroundMusic() {
+            let bgMusic = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with actual base64 encoded MP3 (e.g., casino background music)
+            bgMusic.loop = true;
+            bgMusic.volume = 0.3;
+            bgMusic.play();
+        }
+
+        function stopBackgroundMusic() {
+            let bgMusic = document.querySelector('audio');
+            if (bgMusic) bgMusic.pause();
         }
     </script>
 </body>
