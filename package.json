@@ -1,7 +1,7 @@
 {
-  "name": "casinommr",
+  "name": "casinommropper",
   "version": "1.0.0",
-  "description": "A casino roulette game with admin and user functionalities",
+  "description": "A casinommropper roulette game with admin and user functionalities",
   "main": "index.html",
   "scripts": {
     "start": "netlify dev",
