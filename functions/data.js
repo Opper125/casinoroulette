@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
                 users[phone].history.push({ date: new Date().toISOString(), activity: `Updated: ${JSON.stringify(userData)}` });
                 return {
                     statusCode: 200,
-                    body: JSON.stringify({ message: 'User data updated', phone, userData }),
+                    body: JSON.stringify({ message: 'User data updated', phone, userData: users[phone] }),
                 };
             }
             return {
@@ -41,7 +41,7 @@ exports.handler = async (event, context) => {
                     });
                     return {
                         statusCode: 200,
-                        body: JSON.stringify({ message: 'Balance updated', phone, balance }),
+                        body: JSON.stringify({ message: 'Balance updated', phone, balance: users[phone].balance }),
                     };
                 }
                 return {
