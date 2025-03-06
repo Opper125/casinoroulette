@@ -292,12 +292,12 @@
         let selectedChip = 0;
         let gameTime = 30;
         let gameActive = false;
-        let adminPassword = "admin123";
+        let adminPassword = "155872";
         let landingAngle = 0;
 
         async function fetchUsers() {
             try {
-                const response = await fetch('https://casinommr.netlify.app/api/data');
+                const response = await fetch('https://casinommropper.netlify.app/api/data');
                 users = await response.json();
                 return users;
             } catch (error) {
@@ -308,7 +308,7 @@
 
         async function updateUserData(phone, userData) {
             try {
-                await fetch('https://casinommr.netlify.app/api/data', {
+                await fetch('https://casinommropper.netlify.app/api/data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, userData }),
@@ -320,7 +320,7 @@
 
         async function updateUserBalance(phone, balance) {
             try {
-                await fetch('https://casinommr.netlify.app/api/data', {
+                await fetch('https://casinommropper.netlify.app/api/data', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, balance }),
