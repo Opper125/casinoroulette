@@ -14,7 +14,7 @@
             text-align: center; 
             background: #0a0a0a url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==') repeat; 
         }
-        #login { display: block; }
+        #login { display: none; }
         #game { display: none; }
         #header { background: #ffd700; color: black; padding: 10px; font-size: 24px; }
         #betInfo { margin: 10px 0; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
@@ -139,7 +139,7 @@
         }
         .chip:hover { transform: scale(1.2); box-shadow: 0 0 10px #ffd700; }
         #resultBox { width: 100px; height: 50px; background: #ffd700; margin: 10px auto; line-height: 50px; font-size: 20px; border-radius: 5px; animation: blink 1s infinite; }
-        #serverMsg { display: none; color: red; font-size: 24px; animation: fadeInOut 2s infinite; }
+        #serverMsg { display: block; color: red; font-size: 24px; animation: fadeInOut 2s infinite; }
         @media (max-width: 600px) { 
             #wheel-container { width: 200px; height: 200px; } 
             .roulette-table { grid-template-columns: repeat(3, 1fr); max-width: 200px; }
@@ -352,6 +352,10 @@
         }
 
         async function login() {
+            if (gameState !== 'running') {
+                alert('Admin က ဂိမ်းကို ဖွင့်မှ ဝင်လို့ရပါမယ်။');
+                return;
+            }
             const inputPhone = document.getElementById('phone').value;
             const pin = document.getElementById('pin').value;
             const users = await fetchUsers();
@@ -372,7 +376,7 @@
                 phone = inputPhone;
                 balance = users[phone].balance;
                 document.getElementById('login').style.display = 'none';
-                document.getElementById('game').style.display = 'block' if (gameState === 'running');
+                document.getElementById('game').style.display = 'block';
                 updateUserInfo();
                 sendUserInfoToUserInfo();
                 playBackgroundMusic();
@@ -561,11 +565,13 @@
                 gameState = 'running';
                 startGame();
                 document.getElementById('game').style.display = 'block';
+                document.getElementById('login').style.display = 'block';
             } else if (event.data.type === 'stopGame' && event.data.password === 'admin123') {
                 gameState = 'stopped';
                 document.getElementById('serverMsg').style.display = 'block';
                 document.getElementById('wheel-container').style.display = 'none';
                 document.getElementById('game').style.display = 'none';
+                document.getElementById('login').style.display = 'none';
                 clearInterval(window.gameInterval);
             } else if (event.data.type === 'updateBalance' && event.data.phone === phone) {
                 updateUserInfo();
