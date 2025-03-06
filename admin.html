@@ -35,6 +35,7 @@
         let adminLoggedIn = false;
         let gameActive = false;
         const adminPassword = 'admin123';
+        let gameWindow = null;
 
         async function fetchUsers() {
             try {
@@ -131,24 +132,51 @@
                     if (gameTimeValue <= 0) {
                         gameTimeElement.innerText = 30;
                     }
-                    window.postMessage({ type: 'syncTime', time: gameTimeValue }, BASE_URL);
+                    if (gameWindow && !gameWindow.closed) {
+                        gameWindow.postMessage({ type: 'syncTime', time: gameTimeValue }, BASE_URL);
+                    }
                 }
             }, 1000);
         }
 
         function startGame() {
             if (!adminLoggedIn) return;
+            if (gameActive) {
+                alert('Game ဖွင့်ထားပြီးပါပြီ။');
+                return;
+            }
             gameActive = true;
             document.getElementById('gameTime').innerText = 30;
-            window.open(`${BASE_URL}`, '_blank'); // Open index.html automatically
-            window.postMessage({ type: 'startGame', password: adminPassword }, BASE_URL);
-            alert('Game စတင်ပါတယ်');
+
+            // Open index.html in a new window
+            gameWindow = window.open(`${BASE_URL}`, '_blank');
+            if (!gameWindow) {
+                alert('Browser က popup ကို ပိတ်ထားပုံရပါတယ်။ Popup ကို ခွင့်ပြုပြီး ထပ်ကြိုးစားပါ။');
+                return;
+            }
+
+            // Wait for the window to load and send the startGame message
+            setTimeout(() => {
+                if (gameWindow && !gameWindow.closed) {
+                    gameWindow.postMessage({ type: 'startGame', password: adminPassword }, BASE_URL);
+                    alert('Game စတင်ပါတယ်');
+                } else {
+                    alert('Game ဖွင့်ရာတွင် ပြဿနာရှိနေပါတယ်။ ထပ်မံကြိုးစားပါ။');
+                }
+            }, 2000); // Delay to ensure the page is loaded
         }
 
         function stopGame() {
             if (!adminLoggedIn) return;
+            if (!gameActive) {
+                alert('Game ပိတ်ထားပြီးပါပြီ။');
+                return;
+            }
             gameActive = false;
-            window.postMessage({ type: 'stopGame', password: adminPassword }, BASE_URL);
+            if (gameWindow && !gameWindow.closed) {
+                gameWindow.postMessage({ type: 'stopGame', password: adminPassword }, BASE_URL);
+                gameWindow.close();
+            }
             alert('Game ပိတ်ပါတယ်');
         }
     </script>
