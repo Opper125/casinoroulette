@@ -8,8 +8,6 @@
         body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; }
         input, button { margin: 10px; padding: 5px; }
         #adminPanel { display: none; }
-        #userInfo { margin-top: 20px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
-        #gameTime { font-size: 24px; color: #ffd700; }
         #transactionResult { margin-top: 10px; color: #ffd700; }
     </style>
 </head>
@@ -18,11 +16,6 @@
     <input type="password" id="adminPass" placeholder="Admin Password">
     <button onclick="loginAdmin()">Login</button>
     <div id="adminPanel">
-        <h2>အသုံးပြုသူ စစ်ဆေးမည်</h2>
-        <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
-        <button onclick="searchUser()">ရှာမည်</button>
-        <div id="userInfo"></div>
-
         <h2>ငွေသွင်း/ငွေထုတ်</h2>
         <input type="text" id="transactionPhone" placeholder="ဖုန်းနံပါတ်">
         <input type="number" id="transactionAmount" placeholder="ငွေပမာဏ (MMK)">
@@ -41,13 +34,12 @@
         const DATA_API = `${BASE_URL}/.netlify/functions/data`;
         let adminLoggedIn = false;
         let gameActive = false;
-        let adminPassword = "admin123";
+        const adminPassword = 'admin123';
 
         async function fetchUsers() {
             try {
                 const response = await fetch(DATA_API);
-                const data = await response.json();
-                return data;
+                return await response.json();
             } catch (error) {
                 console.error('Error fetching users:', error);
                 return {};
@@ -74,8 +66,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, balance }),
                 });
-                return await response.json();
                 window.postMessage({ type: 'updateBalance', phone: phone }, BASE_URL);
+                return await response.json();
             } catch (error) {
                 console.error('Error updating user balance:', error);
             }
@@ -91,25 +83,6 @@
             }
         }
 
-        async function searchUser() {
-            if (!adminLoggedIn) return;
-            const phone = document.getElementById('searchPhone').value;
-            const users = await fetchUsers();
-            if (users[phone]) {
-                document.getElementById('userInfo').innerHTML = `
-                    <p>Phone: ${phone}</p>
-                    <p>Balance: ${users[phone].balance} MMK</p>
-                    <p>Game ID: ${users[phone].gameId}</p>
-                    <p>Play Time: ${users[phone].playTime} ကြိမ်</p>
-                    <p>Last Activity: ${new Date(users[phone].lastActivity).toLocaleString()}</p>
-                    <p>History: ${JSON.stringify(users[phone].history)}</p>
-                `;
-                window.postMessage({ type: 'updateUserInfo', phone: phone }, BASE_URL);
-            } else {
-                document.getElementById('userInfo').innerHTML = `<p>အသုံးပြုသူ မတွေ့ပါ</p>`;
-            }
-        }
-
         async function deposit() {
             if (!adminLoggedIn) return;
             const phone = document.getElementById('transactionPhone').value;
@@ -121,7 +94,6 @@
                 await updateUserData(phone, users[phone]);
                 await updateUserBalance(phone, users[phone].balance);
                 document.getElementById('transactionResult').innerHTML = `<p>${amount} MMK ငွေသွင်းပြီးပါတယ် (အချိန်: ${new Date().toLocaleString()})</p>`;
-                window.postMessage({ type: 'updateUserInfo', phone: phone }, BASE_URL);
             } else if (!users[phone]) {
                 document.getElementById('transactionResult').innerHTML = `<p>ဖုန်းနံပါတ် ${phone} မတွေ့ပါ</p>`;
             } else {
@@ -140,7 +112,6 @@
                 await updateUserData(phone, users[phone]);
                 await updateUserBalance(phone, users[phone].balance);
                 document.getElementById('transactionResult').innerHTML = `<p>${amount} MMK ငွေထုတ်ပြီးပါတယ် (အချိန်: ${new Date().toLocaleString()})</p>`;
-                window.postMessage({ type: 'updateUserInfo', phone: phone }, BASE_URL);
             } else if (!users[phone]) {
                 document.getElementById('transactionResult').innerHTML = `<p>ဖုန်းနံပါတ် ${phone} မတွေ့ပါ</p>`;
             } else if (users[phone].balance < amount) {
@@ -179,13 +150,6 @@
             window.postMessage({ type: 'stopGame', password: adminPassword }, BASE_URL);
             alert('Game ပိတ်ပါတယ်');
         }
-
-        window.addEventListener('message', async (event) => {
-            if (event.origin !== BASE_URL) return;
-            if (event.data.type === 'updateBalance' && users[event.data.phone]) {
-                await fetchUsers();
-            }
-        });
     </script>
 </body>
 </html>
