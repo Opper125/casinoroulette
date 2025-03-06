@@ -84,18 +84,18 @@ class RouletteWrapper extends React.Component<any, any> {
     this.socketServer.close();
   }
   setGameData(gameData: GameData) { 
-    if (gameData.stage === GameStages.NO_MORE_BETS) { // PLACE BET from 25 to 35
+    if (gameData.stage === GameStages.NO_MORE_BETS) {
       var endTime = 35;
       var nextNumber = gameData.value
       this.setState({ endTime: endTime, progressCountdown: endTime - gameData.time_remaining, number: { next: nextNumber }, stage: gameData.stage, time_remaining: gameData.time_remaining}); 
-    } else if (gameData.stage === GameStages.WINNERS) { // PLACE BET from 35 to 59
+    } else if (gameData.stage === GameStages.WINNERS) {
       var endTime = 59;
       if (gameData.wins.length > 0) {
         this.setState({ endTime: endTime, progressCountdown: endTime - gameData.time_remaining,winners: gameData.wins,stage: gameData.stage, time_remaining: gameData.time_remaining, history: gameData.history }); 
       } else {
         this.setState({ endTime: endTime, progressCountdown: endTime - gameData.time_remaining, stage: gameData.stage, time_remaining: gameData.time_remaining, history: gameData.history }); 
      }
-    } else { // PLACE BET from 0 to 25
+    } else {
       var endTime = 25;
       this.setState({endTime: endTime, progressCountdown: endTime - gameData.time_remaining, stage: gameData.stage , time_remaining: gameData.time_remaining}); 
     }
