@@ -7,6 +7,9 @@
     <style>
         body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; }
         #info { margin-top: 20px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #555; padding: 8px; text-align: left; }
+        th { background: #333; }
     </style>
 </head>
 <body>
@@ -17,22 +20,55 @@
     <div id="info"></div>
     <script>
         let users = JSON.parse(localStorage.getItem('users')) || {};
+        let currentUser = null;
 
         function checkInfo() {
             const phone = document.getElementById('phone').value;
             const pin = document.getElementById('pin').value;
             if (users[phone] && users[phone].pin === pin) {
-                document.getElementById('info').innerHTML = `
-                    <p>UserID: User${phone.slice(-4)}</p>
-                    <p>Phone: ${phone}</p>
-                    <p>Balance: ${users[phone].balance} ကျပ်</p>
-                    <p>Play Time: ${users[phone].playTime} ကြိမ်</p>
-                    <p>History: ${JSON.stringify(users[phone].history)}</p>
-                `;
+                currentUser = phone;
+                displayUserInfo();
+                startRealTimeUpdate();
             } else {
                 alert('ဖုန်းနံပါတ် သို့မဟုတ် PIN မမှန်ပါ');
             }
         }
+
+        function displayUserInfo() {
+            if (currentUser && users[currentUser]) {
+                const user = users[currentUser];
+                document.getElementById('info').innerHTML = `
+                    <p>UserID: ${user.gameId}</p>
+                    <p>Phone: ${currentUser}</p>
+                    <p>PIN: ${user.pin}</p>
+                    <p>Balance: ${user.balance} ကျပ်</p>
+                    <p>Play Time: ${user.playTime} ကြိမ်</p>
+                    <p>Created Date: ${user.createdDate}</p>
+                    <p>Last Activity: ${new Date(user.lastActivity).toLocaleString()}</p>
+                    <h3>History</h3>
+                    <table>
+                        <tr><th>Time</th><th>Activity</th></tr>
+                        ${user.history.map(h => `<tr><td>${new Date(h.date).toLocaleString()}</td><td>${h.activity}</td></tr>`).join('')}
+                    </table>
+                `;
+            }
+        }
+
+        function startRealTimeUpdate() {
+            setInterval(() => {
+                users = JSON.parse(localStorage.getItem('users')) || {};
+                if (currentUser && users[currentUser]) {
+                    displayUserInfo();
+                }
+            }, 1000); // Update every second
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'updateUserInfo' && event.data.phone === currentUser) {
+                users = JSON.parse(localStorage.getItem('users')) || {};
+                displayUserInfo();
+            }
+        });
     </script>
 </body>
 </html>
