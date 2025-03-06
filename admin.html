@@ -4,18 +4,62 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
+        input, button { margin: 10px; padding: 5px; }
+        #userInfo { margin-top: 20px; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Admin Panel</h1>
-        <div id="admin-actions">
-            <input type="text" id="admin-phone" placeholder="ဖုန်းနံပါတ်">
-            <input type="number" id="amount" placeholder="ငွေပမာဏ">
-            <button onclick="addBalance()">ငွေသွင်း</button>
-            <button onclick="deductBalance()">ငွေထုတ်</button>
-        </div>
+    <h1>Admin Panel</h1>
+    <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
+    <button onclick="searchUser()">ရှာမည်</button>
+    <div id="userInfo"></div>
+    <div>
+        <input type="number" id="amount" placeholder="ငွေပမာဏ (ကျပ်)">
+        <button onclick="deposit()">ငွေသွင်းမည်</button>
+        <button onclick="withdraw()">ငွေထုတ်မည်</button>
     </div>
-    <script src="script.js"></script>
+    <script>
+        let users = JSON.parse(localStorage.getItem('users')) || {};
+        let currentPhone = '';
+
+        function searchUser() {
+            const phone = document.getElementById('searchPhone').value;
+            if (users[phone]) {
+                currentPhone = phone;
+                document.getElementById('userInfo').innerHTML = `
+                    <p>ဖုန်းနံပါတ်: ${phone}</p>
+                    <p>Balance: ${users[phone].balance} ကျပ်</p>
+                `;
+            } else {
+                alert('အသုံးပြုသူ မတွေ့ပါ');
+            }
+        }
+
+        function deposit() {
+            const amount = parseInt(document.getElementById('amount').value);
+            if (currentPhone && amount > 0) {
+                users[currentPhone].balance += amount;
+                localStorage.setItem('users', JSON.stringify(users));
+                alert(`${amount} ကျပ် ငွေသွင်းပြီးပါပြီ`);
+                searchUser();
+            } else {
+                alert('ဖုန်းနံပါတ် သို့မဟုတ် ပမာဏ မမှန်ပါ');
+            }
+        }
+
+        function withdraw() {
+            const amount = parseInt(document.getElementById('amount').value);
+            if (currentPhone && amount > 0 && users[currentPhone].balance >= amount) {
+                users[currentPhone].balance -= amount;
+                localStorage.setItem('users', JSON.stringify(users));
+                alert(`${amount} ကျပ် ငွေထုတ်ပြီးပါပြီ`);
+                searchUser();
+            } else {
+                alert('ငွေလုံလောက်မှု မရှိပါ သို့မဟုတ် ပမာဏ မမှန်ပါ');
+            }
+        }
+    </script>
 </body>
 </html>
