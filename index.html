@@ -286,20 +286,16 @@
         <div id="serverMsg">Server ခနစောင့်ပါ...</div>
     </div>
     <script>
-        let users = {};
-        let currentUser = null;
-        let currentBets = [];
-        let selectedChip = 0;
-        let gameTime = 30;
-        let gameActive = false;
-        let adminPassword = "155872";
-        let landingAngle = 0;
+        const BASE_URL = 'https://casinommropper.netlify.app';
+        const DATA_API = `${BASE_URL}/.netlify/functions/data`;
+        let userId, phone, balance = 0, bets = {}, timeLeft = 30, gameState = 'betting', wheelAngle = 0, totalBet = 0;
+        let offlineQueue = [];
 
         async function fetchUsers() {
             try {
-                const response = await fetch('https://casinommropper.netlify.app/api/data');
-                users = await response.json();
-                return users;
+                const response = await fetch(DATA_API);
+                const data = await response.json();
+                return data;
             } catch (error) {
                 console.error('Error fetching users:', error);
                 return {};
@@ -308,48 +304,69 @@
 
         async function updateUserData(phone, userData) {
             try {
-                await fetch('https://casinommropper.netlify.app/api/data', {
+                const response = await fetch(DATA_API, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, userData }),
                 });
+                const result = await response.json();
+                syncOfflineQueue();
+                return result;
             } catch (error) {
                 console.error('Error updating user data:', error);
+                offlineQueue.push({ phone, userData, method: 'POST' });
             }
         }
 
         async function updateUserBalance(phone, balance) {
             try {
-                await fetch('https://casinommropper.netlify.app/api/data', {
+                const response = await fetch(DATA_API, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, balance }),
                 });
-                window.postMessage({ type: 'updateBalance', phone: phone }, '*');
+                const result = await response.json();
+                window.postMessage({ type: 'updateBalance', phone: phone }, BASE_URL);
+                syncOfflineQueue();
+                return result;
             } catch (error) {
                 console.error('Error updating user balance:', error);
+                offlineQueue.push({ phone, balance, method: 'PUT' });
+            }
+        }
+
+        function syncOfflineQueue() {
+            if (navigator.onLine && offlineQueue.length > 0) {
+                offlineQueue.forEach(async (item) => {
+                    if (item.method === 'POST') {
+                        await updateUserData(item.phone, item.userData);
+                    } else if (item.method === 'PUT') {
+                        await updateUserBalance(item.phone, item.balance);
+                    }
+                });
+                offlineQueue = [];
             }
         }
 
         async function login() {
-            const phone = document.getElementById('phone').value;
+            const inputPhone = document.getElementById('phone').value;
             const pin = document.getElementById('pin').value;
-            await fetchUsers();
-            if (!users[phone]) {
-                users[phone] = {
+            const users = await fetchUsers();
+            if (!users[inputPhone]) {
+                users[inputPhone] = {
                     pin: pin,
                     balance: 0,
                     playTime: 0,
-                    bets: [],
+                    bets: {},
                     history: [],
-                    gameId: `User${phone.slice(-4)}`,
+                    gameId: `User${inputPhone.slice(-4)}`,
                     createdDate: new Date().toLocaleDateString(),
                     lastActivity: new Date().toISOString()
                 };
-                await updateUserData(phone, users[phone]);
+                await updateUserData(inputPhone, users[inputPhone]);
             }
-            if (users[phone].pin === pin) {
-                currentUser = phone;
+            if (users[inputPhone].pin === pin) {
+                phone = inputPhone;
                 document.getElementById('login').style.display = 'none';
                 document.getElementById('game').style.display = 'block';
                 updateUserInfo();
@@ -362,22 +379,23 @@
         }
 
         async function updateUserInfo() {
-            if (currentUser) {
-                await fetchUsers();
-                document.getElementById('balance').innerText = `${users[currentUser].balance} MMK`;
-                users[currentUser].playTime += 1;
-                users[currentUser].lastActivity = new Date().toISOString();
-                await updateUserData(currentUser, users[currentUser]);
+            if (phone) {
+                const users = await fetchUsers();
+                balance = users[phone]?.balance || 0;
+                document.getElementById('balance').innerText = `${balance} MMK`;
+                users[phone].playTime += 1;
+                users[phone].lastActivity = new Date().toISOString();
+                await updateUserData(phone, users[phone]);
                 updateBetInfo();
             }
         }
 
         async function updateUserActivity(activity) {
-            if (currentUser) {
-                await fetchUsers();
-                users[currentUser].history.push({ date: new Date().toISOString(), activity: activity });
-                await updateUserData(currentUser, users[currentUser]);
-                window.postMessage({ type: 'updateUserInfo', phone: currentUser }, '*');
+            if (phone) {
+                const users = await fetchUsers();
+                users[phone].history.push({ date: new Date().toISOString(), activity: activity });
+                await updateUserData(phone, users[phone]);
+                window.postMessage({ type: 'updateUserInfo', phone: phone }, BASE_URL);
             }
         }
 
@@ -388,20 +406,32 @@
         }
 
         function selectChip(amount) {
-            selectedChip = amount;
-            updateUserActivity(`Selected chip: ${amount} MMK`);
-            alert(`ရွေးထားသော ချစ်ပ်: ${amount} MMK`);
+            if (balance >= amount) {
+                totalBet += amount;
+                bets[totalBet] = amount;
+                updateUserActivity(`Selected chip: ${amount} MMK`);
+                alert(`ရွေးထားသော ချစ်ပ်: ${amount} MMK`);
+                updateBetInfo();
+            } else {
+                alert('လက်ကျန်ငွေ မလုံလောက်ပါ');
+            }
+        }
+
+        function updateBetInfo() {
+            document.getElementById('totalBet').innerText = `${totalBet} MMK`;
         }
 
         async function placeBet(type) {
-            if (!selectedChip || !gameActive || users[currentUser].balance < selectedChip || gameTime <= 7) return;
-            const bet = { type: type, amount: selectedChip, user: currentUser, multiplier: getMultiplier(type) };
-            currentBets.push(bet);
-            users[currentUser].balance -= selectedChip;
-            await updateUserData(currentUser, users[currentUser]);
-            updateUserActivity(`Placed bet: ${type} with ${selectedChip} MMK`);
+            if (!totalBet || !gameState === 'betting' || balance < totalBet || timeLeft <= 7) return;
+            const bet = { type: type, amount: totalBet, user: phone, multiplier: getMultiplier(type) };
+            bets[phone] = bets[phone] || [];
+            bets[phone].push(bet);
+            balance -= totalBet;
+            totalBet = 0;
+            await updateUserData(phone, { balance, bets: bets[phone] });
+            updateUserActivity(`Placed bet: ${type} with ${bet.amount} MMK`);
             updateUserInfo();
-            updateBetDisplay(type, selectedChip);
+            updateBetDisplay(type, bet.amount);
         }
 
         function getMultiplier(type) {
@@ -417,27 +447,25 @@
                 const multiplier = getMultiplier(type);
                 betElement.innerHTML = `${type} <span style="color: yellow;">x${multiplier}</span>`;
             }
-            document.getElementById('totalBet').innerText = `${currentBets.reduce((sum, bet) => sum + bet.amount, 0)} MMK`;
         }
 
         function startGame() {
-            gameActive = true;
+            gameState = 'running';
             document.getElementById('serverMsg').style.display = 'none';
             document.getElementById('wheel-container').style.display = 'block';
-            let time = setInterval(() => {
-                gameTime--;
-                document.getElementById('gameTime').innerText = gameTime;
-                if (gameTime <= 7) {
-                    gameActive = false;
-                    alert('Betting closed! Waiting for spin...');
+            const gameInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('gameTime').innerText = timeLeft;
+                if (timeLeft <= 7) {
+                    gameState = 'spinning';
                 }
-                if (gameTime <= 0) {
-                    clearInterval(time);
+                if (timeLeft <= 0) {
+                    clearInterval(gameInterval);
                     spinWheel();
-                    gameTime = 30;
+                    timeLeft = 30;
                     setTimeout(() => {
                         document.getElementById('wheel-container').style.display = 'none';
-                        if (gameActive) startGame();
+                        if (gameState === 'running') startGame();
                     }, 6000);
                 }
             }, 1000);
@@ -449,14 +477,14 @@
             const ball = document.getElementById('ball');
             const landingSpot = document.getElementById('landingSpot');
             ball.style.display = 'block';
-            let result = Math.floor(Math.random() * 37);
-            landingAngle = (result * 9.73) + (Math.random() * 10 - 5);
-            wheel.style.transform = `rotate(${landingAngle}deg)`;
+            const result = Math.floor(Math.random() * 37);
+            wheelAngle = (result * 9.73) + (Math.random() * 10 - 5);
+            wheel.style.transform = `rotate(${wheelAngle}deg)`;
             ball.style.animation = 'ballSpin 4s ease-out forwards';
             setTimeout(() => {
                 ball.style.animation = 'ballBounce 1s ease-out forwards';
                 landingSpot.style.display = 'block';
-                landingSpot.style.transform = `rotate(${landingAngle}deg) translateX(120px)`;
+                landingSpot.style.transform = `rotate(${wheelAngle}deg) translateX(120px)`;
                 setTimeout(() => {
                     wheel.style.transition = '';
                     ball.style.animation = '';
@@ -467,13 +495,13 @@
                 }, 1000);
             }, 4000);
             updateUserActivity(`Wheel spun, result: ${result}`);
-            let spinSound = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with base64 encoded spin sound
+            const spinSound = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with base64 encoded spin sound
             spinSound.play();
         }
 
         async function calculatePayout(result) {
+            const users = await fetchUsers();
             let allBets = [];
-            await fetchUsers();
             Object.keys(users).forEach(user => {
                 users[user].bets.forEach(bet => allBets.push(bet));
             });
@@ -495,52 +523,51 @@
                 if (userPayout > 0) {
                     users[user].balance += userPayout + users[user].bets.reduce((sum, bet) => sum + bet.amount, 0);
                     users[user].history.push({ date: new Date().toISOString(), activity: `Won: ${userPayout} MMK, Result: ${result}` });
-                    if (user === currentUser) alert(`အနိုင်ရရှိပါတယ်! ရလဒ်: ${result}, ရရှိသောပမာဏ: ${userPayout} MMK`);
+                    if (user === phone) alert(`အနိုင်ရရှိပါတယ်! ရလဒ်: ${result}, ရရှိသောပမာဏ: ${userPayout} MMK`);
                 } else {
                     users[user].history.push({ date: new Date().toISOString(), activity: `Lost: ${users[user].bets.reduce((sum, bet) => sum + bet.amount, 0)} MMK, Result: ${result}` });
-                    if (user === currentUser) alert(`ရှုံးသွားပါပြီ! ရလဒ်: ${result}`);
+                    if (user === phone) alert(`ရှုံးသွားပါပြီ! ရလဒ်: ${result}`);
                 }
                 users[user].bets = [];
                 await updateUserData(user, users[user]);
-                updateUserInfo();
             });
             document.getElementById('totalBet').innerText = `${allBets.reduce((sum, bet) => sum + bet.amount, 0)} MMK`;
         }
 
         function playBackgroundMusic() {
-            let bgMusic = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with base64 encoded casino background music
+            const bgMusic = new Audio('data:audio/mpeg;base64,//uQRAA...'); // Replace with base64 encoded casino background music
             bgMusic.loop = true;
             bgMusic.volume = 0.3;
             bgMusic.play();
         }
 
-        function stopBackgroundMusic() {
-            let bgMusic = document.querySelector('audio');
-            if (bgMusic) bgMusic.pause();
-        }
-
         window.addEventListener('message', (event) => {
+            if (event.origin !== BASE_URL) return;
             if (event.data.type === 'startGame' && event.data.password === adminPassword) {
-                gameActive = true;
+                gameState = 'running';
                 startGame();
                 document.getElementById('game').style.display = 'block';
             } else if (event.data.type === 'stopGame' && event.data.password === adminPassword) {
-                gameActive = false;
+                gameState = 'stopped';
                 document.getElementById('serverMsg').style.display = 'block';
                 document.getElementById('wheel-container').style.display = 'none';
                 document.getElementById('game').style.display = 'none';
-                clearInterval(window.gameTimer);
-            } else if (event.data.type === 'updateBalance' && event.data.phone === currentUser) {
+                clearInterval(window.gameInterval);
+            } else if (event.data.type === 'updateBalance' && event.data.phone === phone) {
                 updateUserInfo();
             } else if (event.data.type === 'syncTime') {
-                gameTime = event.data.time;
-                document.getElementById('gameTime').innerText = gameTime;
+                timeLeft = event.data.time;
+                document.getElementById('gameTime').innerText = timeLeft;
             }
         });
 
         document.querySelectorAll('.number, .bet-option').forEach(element => {
             element.addEventListener('click', () => placeBet(element.getAttribute('data-value')));
         });
+
+        // Check network status
+        window.addEventListener('online', syncOfflineQueue);
+        window.addEventListener('offline', () => console.log('Offline mode activated'));
     </script>
     <style>
         .number-slot {
