@@ -23,47 +23,42 @@
         async function fetchUsers() {
             try {
                 const response = await fetch(DATA_API);
-                users = await response.json();
-                return users;
+                return await response.json();
             } catch (error) {
                 console.error('Error fetching users:', error);
                 return {};
             }
         }
 
-        async function displayAllUsers() {
-            await fetchUsers();
-            let html = '<h3>All Users</h3><table><tr><th>Phone</th><th>Balance</th><th>Game ID</th><th>Play Time</th><th>Last Activity</th><th>History</th></tr>';
-            Object.keys(users).forEach(phone => {
-                const user = users[phone];
-                html += `<tr>
-                    <td>${phone}</td>
-                    <td>${user.balance} MMK</td>
-                    <td>${user.gameId}</td>
-                    <td>${user.playTime} ကြိမ်</td>
-                    <td>${new Date(user.lastActivity).toLocaleString()}</td>
-                    <td>${JSON.stringify(user.history)}</td>
-                </tr>`;
-            });
+        function displayUserInfo(phone, data) {
+            let html = `<h3>User: ${phone}</h3><table><tr><th>Balance</th><th>History</th></tr>`;
+            html += `<tr><td>${data.balance} MMK</td><td>${JSON.stringify(data.history)}</td></tr>`;
             html += '</table>';
             document.getElementById('info').innerHTML = html;
         }
 
-        function startRealTimeUpdate() {
-            setInterval(async () => {
-                await displayAllUsers();
-            }, 1000);
-        }
-
         window.addEventListener('message', async (event) => {
-            if (event.origin !== BASE_URL) return;
+            if (event.origin !== BASE_URL && event.origin !== `${BASE_URL}/userinfo.html`) return;
             if (event.data.type === 'updateUserInfo') {
-                await fetchUsers();
-                displayAllUsers();
+                const { phone, data } = event.data;
+                displayUserInfo(phone, data);
+                const users = await fetchUsers();
+                users[phone] = { ...users[phone], ...data };
+                await fetch(DATA_API, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone, userData: users[phone] }),
+                });
             }
         });
 
-        window.onload = startRealTimeUpdate;
+        // Real-time update for all users
+        setInterval(async () => {
+            const users = await fetchUsers();
+            Object.keys(users).forEach(phone => {
+                displayUserInfo(phone, { balance: users[phone].balance, history: users[phone].history });
+            });
+        }, 1000);
     </script>
 </body>
 </html>
