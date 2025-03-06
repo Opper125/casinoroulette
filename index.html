@@ -283,7 +283,7 @@
             <div class="chip" onclick="selectChip(1000000)">1M</div>
         </div>
         <div id="resultBox">...</div>
-        <div id="serverMsg">Server ခနစောင့်ပါ...</div>
+        <div id="serverMsg">Admin က ဂိမ်းဖွင့်မှ ဝင်လို့ရပါမယ်...</div>
     </div>
     <script>
         const BASE_URL = 'https://casinommropper.netlify.app';
@@ -292,7 +292,7 @@
         let balance = 0;
         let bets = {};
         let timeLeft = 30;
-        let gameState = 'stopped';
+        let gameState = 'stopped'; // Initially stopped
         let wheelAngle = 0;
         let totalBet = 0;
         let offlineQueue = [];
@@ -408,9 +408,21 @@
             }
         }
 
-        function sendUserInfoToUserInfo() {
+        async function sendUserInfoToUserInfo() {
             if (phone) {
-                window.postMessage({ type: 'updateUserInfo', phone: phone, data: { balance, history: (await fetchUsers())[phone]?.history || [] } }, `${BASE_URL}/userinfo.html`);
+                try {
+                    const users = await fetchUsers();
+                    window.postMessage(
+                        { 
+                            type: 'updateUserInfo', 
+                            phone: phone, 
+                            data: { balance, history: users[phone]?.history || [] } 
+                        }, 
+                        `${BASE_URL}/userinfo.html`
+                    );
+                } catch (error) {
+                    console.error('Error sending user info to userinfo:', error);
+                }
             }
         }
 
@@ -560,24 +572,30 @@
         }
 
         window.addEventListener('message', (event) => {
-            if (event.origin !== BASE_URL) return;
-            if (event.data.type === 'startGame' && event.data.password === 'admin123') {
-                gameState = 'running';
-                startGame();
-                document.getElementById('game').style.display = 'block';
-                document.getElementById('login').style.display = 'block';
-            } else if (event.data.type === 'stopGame' && event.data.password === 'admin123') {
-                gameState = 'stopped';
-                document.getElementById('serverMsg').style.display = 'block';
-                document.getElementById('wheel-container').style.display = 'none';
-                document.getElementById('game').style.display = 'none';
-                document.getElementById('login').style.display = 'none';
-                clearInterval(window.gameInterval);
-            } else if (event.data.type === 'updateBalance' && event.data.phone === phone) {
-                updateUserInfo();
-            } else if (event.data.type === 'syncTime') {
-                timeLeft = event.data.time;
-                document.getElementById('gameTime').innerText = timeLeft;
+            try {
+                if (event.origin !== BASE_URL) return;
+                if (event.data.type === 'startGame' && event.data.password === 'admin123') {
+                    console.log('Received startGame message');
+                    gameState = 'running';
+                    document.getElementById('serverMsg').style.display = 'none';
+                    document.getElementById('login').style.display = 'block';
+                    startGame();
+                } else if (event.data.type === 'stopGame' && event.data.password === 'admin123') {
+                    console.log('Received stopGame message');
+                    gameState = 'stopped';
+                    document.getElementById('serverMsg').style.display = 'block';
+                    document.getElementById('wheel-container').style.display = 'none';
+                    document.getElementById('game').style.display = 'none';
+                    document.getElementById('login').style.display = 'none';
+                    clearInterval(window.gameInterval);
+                } else if (event.data.type === 'updateBalance' && event.data.phone === phone) {
+                    updateUserInfo();
+                } else if (event.data.type === 'syncTime') {
+                    timeLeft = event.data.time;
+                    document.getElementById('gameTime').innerText = timeLeft;
+                }
+            } catch (error) {
+                console.error('Error handling message:', error);
             }
         });
 
@@ -587,6 +605,15 @@
 
         window.addEventListener('online', syncOfflineQueue);
         window.addEventListener('offline', () => console.log('Offline mode activated'));
+
+        // Check initial game state on load
+        window.onload = () => {
+            if (gameState === 'running') {
+                document.getElementById('serverMsg').style.display = 'none';
+                document.getElementById('login').style.display = 'block';
+                startGame();
+            }
+        };
     </script>
     <style>
         .number-slot {
