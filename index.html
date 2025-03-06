@@ -262,7 +262,7 @@
     </div>
     <div id="serverMsg" style="display: none; color: red; font-size: 24px; animation: fadeInOut 2s infinite;">Server ခနစောင့်ပါ...</div>
     <script>
-        let users = JSON.parse(localStorage.getItem('users')) || {};
+        let users = {};
         let currentUser = null;
         let currentBets = [];
         let selectedChip = 0;
@@ -271,9 +271,32 @@
         let adminPassword = "admin123";
         let landingAngle = 0;
 
-        function login() {
+        async function fetchUsers() {
+            const response = await fetch('/api/data');
+            users = await response.json();
+            return users;
+        }
+
+        async function updateUserData(phone, userData) {
+            await fetch('/api/data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, userData }),
+            });
+        }
+
+        async function updateUserBalance(phone, balance) {
+            await fetch('/api/data', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, balance }),
+            });
+        }
+
+        async function login() {
             const phone = document.getElementById('phone').value;
             const pin = document.getElementById('pin').value;
+            await fetchUsers();
             if (!users[phone]) {
                 users[phone] = {
                     pin: pin,
@@ -285,7 +308,7 @@
                     createdDate: new Date().toLocaleDateString(),
                     lastActivity: new Date().toISOString()
                 };
-                localStorage.setItem('users', JSON.stringify(users));
+                await updateUserData(phone, users[phone]);
             }
             if (users[phone].pin === pin) {
                 currentUser = phone;
@@ -295,30 +318,38 @@
                 if (gameActive) startGame();
                 playBackgroundMusic();
                 updateUserActivity('Logged in');
+                startRealTimeUpdate();
             } else {
                 alert('PIN မမှန်ပါ');
             }
         }
 
-        function updateUserInfo() {
+        async function updateUserInfo() {
             if (currentUser) {
+                await fetchUsers();
                 document.getElementById('userId').innerText = users[currentUser].gameId;
                 document.getElementById('userPhone').innerText = currentUser;
                 document.getElementById('balance').innerText = `${users[currentUser].balance} ကျပ်`;
                 users[currentUser].playTime += 1;
                 users[currentUser].lastActivity = new Date().toISOString();
+                await updateUserData(currentUser, users[currentUser]);
                 updateBetInfo();
-                localStorage.setItem('users', JSON.stringify(users));
+            }
+        }
+
+        async function updateUserActivity(activity) {
+            if (currentUser) {
+                await fetchUsers();
+                users[currentUser].history.push({ date: new Date().toISOString(), activity: activity });
+                await updateUserData(currentUser, users[currentUser]);
                 window.postMessage({ type: 'updateUserInfo', phone: currentUser }, '*');
             }
         }
 
-        function updateUserActivity(activity) {
-            if (currentUser) {
-                users[currentUser].history.push({ date: new Date().toISOString(), activity: activity });
-                localStorage.setItem('users', JSON.stringify(users));
-                window.postMessage({ type: 'updateUserInfo', phone: currentUser }, '*');
-            }
+        function startRealTimeUpdate() {
+            setInterval(async () => {
+                await updateUserInfo();
+            }, 1000);
         }
 
         function selectChip(amount) {
@@ -327,11 +358,12 @@
             alert(`ရွေးထားသော ချစ်ပ်: ${amount} ကျပ်`);
         }
 
-        function placeBet(type) {
+        async function placeBet(type) {
             if (!selectedChip || !gameActive || users[currentUser].balance < selectedChip) return;
             const bet = { type: type, amount: selectedChip, user: currentUser };
             currentBets.push(bet);
             users[currentUser].balance -= selectedChip;
+            await updateUserData(currentUser, users[currentUser]);
             updateUserActivity(`Placed bet: ${type} with ${selectedChip} ကျပ်`);
             updateUserInfo();
             updateBetDisplay(type, selectedChip);
@@ -390,9 +422,10 @@
             spinSound.play();
         }
 
-        function calculatePayout(result) {
+        async function calculatePayout(result) {
             let payout = 0;
             let allBets = [];
+            await fetchUsers();
             Object.keys(users).forEach(user => {
                 users[user].bets.forEach(bet => allBets.push(bet));
             });
@@ -408,7 +441,7 @@
                 else if (bet.type === '2nd12' && result >= 13 && result <= 24) payout += bet.amount * 2;
                 else if (bet.type === '3rd12' && result >= 25 && result <= 36) payout += bet.amount * 2;
             });
-            Object.keys(users).forEach(user => {
+            Object.keys(users).forEach(async user => {
                 let userPayout = 0;
                 users[user].bets.forEach(bet => {
                     if (bet.type === result.toString()) userPayout += bet.amount * 35;
@@ -431,10 +464,10 @@
                     if (user === currentUser) alert(`ရှုံးသွားပါပြီ! ရလဒ်: ${result}`);
                 }
                 users[user].bets = [];
+                await updateUserData(user, users[user]);
                 updateUserInfo();
             });
             document.getElementById('totalBet').innerText = `${allBets.reduce((sum, bet) => sum + bet.amount, 0)} ကျပ်`;
-            localStorage.setItem('users', JSON.stringify(users));
         }
 
         function logout() {
