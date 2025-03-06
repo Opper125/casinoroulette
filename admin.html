@@ -7,23 +7,24 @@
     <style>
         body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; }
         input, button { margin: 10px; padding: 5px; }
-        #userInfo { margin-top: 20px; }
-        #gameControl { margin: 10px 0; }
+        #adminPanel { display: none; }
+        #userInfo { margin-top: 20px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
+        #gameTime { font-size: 24px; color: #ffd700; }
     </style>
 </head>
 <body>
     <h1>Admin Panel</h1>
-    <input type="text" id="adminPass" placeholder="Admin Password">
+    <input type="password" id="adminPass" placeholder="Admin Password">
     <button onclick="loginAdmin()">Login</button>
-    <div id="adminPanel" style="display: none;">
+    <div id="adminPanel">
         <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
         <button onclick="searchUser()">ရှာမည်</button>
         <div id="userInfo"></div>
         <input type="number" id="amount" placeholder="ငွေပမာဏ (ကျပ်)">
         <button onclick="deposit()">ငွေသွင်းမည်</button>
         <button onclick="withdraw()">ငွေထုတ်မည်</button>
-        <div id="gameControl">
-            <input type="password" id="gamePass" placeholder="Game Password">
+        <div>
+            <p>Game Time: <span id="gameTime">30</span> စက္ကန့်</p>
             <button onclick="startGame()">Game ဖွင့်မည်</button>
             <button onclick="stopGame()">Game ပိတ်မည်</button>
         </div>
@@ -33,12 +34,12 @@
         let adminLoggedIn = false;
         let gameActive = false;
         let adminPassword = "admin123";
-        let gamePassword = "game123";
 
         function loginAdmin() {
             if (document.getElementById('adminPass').value === adminPassword) {
                 adminLoggedIn = true;
                 document.getElementById('adminPanel').style.display = 'block';
+                syncGameTime();
             } else {
                 alert('Admin Password မမှန်ပါ');
             }
@@ -68,6 +69,7 @@
                 localStorage.setItem('users', JSON.stringify(users));
                 alert(`${amount} ကျပ် ငွေသွင်းပြီးပါပြီ`);
                 searchUser();
+                window.postMessage({ type: 'updateBalance', phone: phone }, '*');
             }
         }
 
@@ -81,28 +83,44 @@
                 localStorage.setItem('users', JSON.stringify(users));
                 alert(`${amount} ကျပ် ငွေထုတ်ပြီးပါပြီ`);
                 searchUser();
+                window.postMessage({ type: 'updateBalance', phone: phone }, '*');
             }
         }
 
+        function syncGameTime() {
+            let time = setInterval(() => {
+                if (gameActive) {
+                    let gameTimeElement = document.getElementById('gameTime');
+                    let gameTimeValue = parseInt(gameTimeElement.innerText);
+                    gameTimeValue--;
+                    gameTimeElement.innerText = gameTimeValue;
+                    if (gameTimeValue <= 0) {
+                        gameTimeElement.innerText = 30;
+                    }
+                    window.postMessage({ type: 'syncTime', time: gameTimeValue }, '*');
+                }
+            }, 1000);
+        }
+
         function startGame() {
-            if (!adminLoggedIn || document.getElementById('gamePass').value !== gamePassword) return;
+            if (!adminLoggedIn) return;
             gameActive = true;
-            window.postMessage({ type: 'startGame' }, '*');
+            document.getElementById('gameTime').innerText = 30;
+            window.postMessage({ type: 'startGame', password: adminPassword }, '*');
             alert('Game စတင်ပါတယ်');
         }
 
         function stopGame() {
-            if (!adminLoggedIn || document.getElementById('gamePass').value !== gamePassword) return;
+            if (!adminLoggedIn) return;
             gameActive = false;
-            window.postMessage({ type: 'stopGame' }, '*');
+            window.postMessage({ type: 'stopGame', password: adminPassword }, '*');
             alert('Game ပိတ်ပါတယ်');
         }
 
         window.addEventListener('message', (event) => {
-            if (event.data.type === 'startGame' && gameActive) {
-                document.getElementById('serverMsg').style.display = 'none';
-            } else if (event.data.type === 'stopGame' && !gameActive) {
-                document.getElementById('serverMsg').style.display = 'block';
+            if (event.data.type === 'updateBalance' && users[event.data.phone]) {
+                users[event.data.phone].balance = parseInt(users[event.data.phone].balance);
+                localStorage.setItem('users', JSON.stringify(users));
             }
         });
     </script>
