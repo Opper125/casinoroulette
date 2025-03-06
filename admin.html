@@ -10,6 +10,7 @@
         #adminPanel { display: none; }
         #userInfo { margin-top: 20px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 5px; }
         #gameTime { font-size: 24px; color: #ffd700; }
+        #transactionResult { margin-top: 10px; color: #ffd700; }
     </style>
 </head>
 <body>
@@ -17,12 +18,18 @@
     <input type="password" id="adminPass" placeholder="Admin Password">
     <button onclick="loginAdmin()">Login</button>
     <div id="adminPanel">
+        <h2>အသုံးပြုသူ စစ်ဆေးမည်</h2>
         <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
         <button onclick="searchUser()">ရှာမည်</button>
         <div id="userInfo"></div>
-        <input type="number" id="amount" placeholder="ငွေပမာဏ (ကျပ်)">
+
+        <h2>ငွေသွင်း/ငွေထုတ်</h2>
+        <input type="text" id="transactionPhone" placeholder="ဖုန်းနံပါတ်">
+        <input type="number" id="transactionAmount" placeholder="ငွေပမာဏ (ကျပ်)">
         <button onclick="deposit()">ငွေသွင်းမည်</button>
         <button onclick="withdraw()">ငွေထုတ်မည်</button>
+        <div id="transactionResult"></div>
+
         <div>
             <p>Game Time: <span id="gameTime">30</span> စက္ကန့်</p>
             <button onclick="startGame()">Game ဖွင့်မည်</button>
@@ -52,38 +59,59 @@
                 document.getElementById('userInfo').innerHTML = `
                     <p>Phone: ${phone}</p>
                     <p>Balance: ${users[phone].balance} ကျပ်</p>
+                    <p>Game ID: ${users[phone].gameId}</p>
+                    <p>Play Time: ${users[phone].playTime} ကြိမ်</p>
+                    <p>Last Activity: ${new Date(users[phone].lastActivity).toLocaleString()}</p>
                     <p>History: ${JSON.stringify(users[phone].history)}</p>
                 `;
             } else {
-                alert('အသုံးပြုသူ မတွေ့ပါ');
+                document.getElementById('userInfo').innerHTML = `<p>အသုံးပြုသူ မတွေ့ပါ</p>`;
             }
         }
 
         function deposit() {
             if (!adminLoggedIn) return;
-            const phone = document.getElementById('searchPhone').value;
-            const amount = parseInt(document.getElementById('amount').value);
+            const phone = document.getElementById('transactionPhone').value;
+            const amount = parseInt(document.getElementById('transactionAmount').value);
             if (phone && amount > 0 && users[phone]) {
                 users[phone].balance += amount;
-                users[phone].history.push({ date: new Date().toLocaleDateString(), amount: amount, type: 'deposit' });
+                users[phone].history.push({ date: new Date().toISOString(), activity: `Deposited: ${amount} ကျပ် by Admin` });
                 localStorage.setItem('users', JSON.stringify(users));
-                alert(`${amount} ကျပ် ငွေသွင်းပြီးပါပြီ`);
-                searchUser();
-                window.postMessage({ type: 'updateBalance', phone: phone }, '*');
+                document.getElementById('transactionResult').innerHTML = `<p>${amount} ကျပ် ငွေသွင်းပြီးပါတယ် (အချိန်: ${new Date().toLocaleString()})</p>`;
+                updateUserBalance(phone);
+                window.postMessage({ type: 'updateUserInfo', phone: phone }, '*');
+            } else if (!users[phone]) {
+                document.getElementById('transactionResult').innerHTML = `<p>ဖုန်းနံပါတ် ${phone} မတွေ့ပါ</p>`;
+            } else {
+                document.getElementById('transactionResult').innerHTML = `<p>မမှန်တဲ့ ငွေပမာဏ သို့မဟုတ် ဖုန်းနံပါတ်</p>`;
             }
         }
 
         function withdraw() {
             if (!adminLoggedIn) return;
-            const phone = document.getElementById('searchPhone').value;
-            const amount = parseInt(document.getElementById('amount').value);
+            const phone = document.getElementById('transactionPhone').value;
+            const amount = parseInt(document.getElementById('transactionAmount').value);
             if (phone && amount > 0 && users[phone] && users[phone].balance >= amount) {
                 users[phone].balance -= amount;
-                users[phone].history.push({ date: new Date().toLocaleDateString(), amount: amount, type: 'withdraw' });
+                users[phone].history.push({ date: new Date().toISOString(), activity: `Withdrawn: ${amount} ကျပ် by Admin` });
                 localStorage.setItem('users', JSON.stringify(users));
-                alert(`${amount} ကျပ် ငွေထုတ်ပြီးပါပြီ`);
-                searchUser();
-                window.postMessage({ type: 'updateBalance', phone: phone }, '*');
+                document.getElementById('transactionResult').innerHTML = `<p>${amount} ကျပ် ငွေထုတ်ပြီးပါတယ် (အချိန်: ${new Date().toLocaleString()})</p>`;
+                updateUserBalance(phone);
+                window.postMessage({ type: 'updateUserInfo', phone: phone }, '*');
+            } else if (!users[phone]) {
+                document.getElementById('transactionResult').innerHTML = `<p>ဖုန်းနံပါတ် ${phone} မတွေ့ပါ</p>`;
+            } else if (users[phone].balance < amount) {
+                document.getElementById('transactionResult').innerHTML = `<p>လက်ကျန်ငွေ မလုံလောက်ပါ</p>`;
+            } else {
+                document.getElementById('transactionResult').innerHTML = `<p>မမှန်တဲ့ ငွေပမာဏ သို့မဟုတ် ဖုန်းနံပါတ်</p>`;
+            }
+        }
+
+        function updateUserBalance(phone) {
+            if (users[phone]) {
+                users[phone].lastActivity = new Date().toISOString();
+                localStorage.setItem('users', JSON.stringify(users));
+                window.postMessage({ type: 'updateBalance', phone: phone, balance: users[phone].balance }, '*');
             }
         }
 
