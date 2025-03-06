@@ -1,6 +1,5 @@
 const serverless = require('serverless-http');
 
-// In-memory data store (replace with a real database like Firebase in production)
 let users = {};
 
 exports.handler = async (event, context) => {
