@@ -1,0 +1,19 @@
+{
+  "name": "casinommr",
+  "version": "1.0.0",
+  "description": "A casino roulette game with admin and user functionalities",
+  "main": "index.html",
+  "scripts": {
+    "start": "netlify dev",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "netlify-lambda": "^2.0.16",
+    "serverless-http": "^3.2.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  },
+  "author": "Your Name",
+  "license": "MIT"
+}
