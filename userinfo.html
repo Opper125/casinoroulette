@@ -3,17 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Information</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>User Info</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>User Information</h1>
-        <div id="user-info">
-            <p>ဖုန်းနံပါတ်: <span id="info-phone"></span></p>
-            <p>လက်ကျန်: <span id="info-balance">0</span> MMK</p>
-        </div>
-    </div>
-    <script src="script.js"></script>
+    <h1>အသုံးပြုသူ အချက်အလက်</h1>
+    <input type="text" id="phone" placeholder="ဖုန်းနံပါတ်">
+    <input type="password" id="pin" placeholder="PIN">
+    <button onclick="checkInfo()">စစ်ဆေးမည်</button>
+    <div id="info"></div>
+    <script>
+        let users = JSON.parse(localStorage.getItem('users')) || {};
+
+        function checkInfo() {
+            const phone = document.getElementById('phone').value;
+            const pin = document.getElementById('pin').value;
+            if (users[phone] && users[phone].pin === pin) {
+                document.getElementById('info').innerHTML = `
+                    <p>ဖုန်းနံပါတ်: ${phone}</p>
+                    <p>Balance: ${users[phone].balance} ကျပ်</p>
+                `;
+            } else {
+                alert('ဖုန်းနံပါတ် သို့မဟုတ် PIN မမှန်ပါ');
+            }
+        }
+    </script>
 </body>
 </html>
