@@ -140,6 +140,7 @@
             if (!adminLoggedIn) return;
             gameActive = true;
             document.getElementById('gameTime').innerText = 30;
+            window.open(`${BASE_URL}`, '_blank'); // Open index.html automatically
             window.postMessage({ type: 'startGame', password: adminPassword }, BASE_URL);
             alert('Game စတင်ပါတယ်');
         }
