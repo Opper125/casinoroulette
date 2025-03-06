@@ -288,14 +288,19 @@
     <script>
         const BASE_URL = 'https://casinommropper.netlify.app';
         const DATA_API = `${BASE_URL}/.netlify/functions/data`;
-        let userId, phone, balance = 0, bets = {}, timeLeft = 30, gameState = 'betting', wheelAngle = 0, totalBet = 0;
+        let phone = null;
+        let balance = 0;
+        let bets = {};
+        let timeLeft = 30;
+        let gameState = 'stopped';
+        let wheelAngle = 0;
+        let totalBet = 0;
         let offlineQueue = [];
 
         async function fetchUsers() {
             try {
                 const response = await fetch(DATA_API);
-                const data = await response.json();
-                return data;
+                return await response.json();
             } catch (error) {
                 console.error('Error fetching users:', error);
                 return {};
@@ -309,9 +314,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, userData }),
                 });
-                const result = await response.json();
                 syncOfflineQueue();
-                return result;
+                return await response.json();
             } catch (error) {
                 console.error('Error updating user data:', error);
                 offlineQueue.push({ phone, userData, method: 'POST' });
@@ -325,10 +329,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ phone, balance }),
                 });
-                const result = await response.json();
                 window.postMessage({ type: 'updateBalance', phone: phone }, BASE_URL);
                 syncOfflineQueue();
-                return result;
+                return await response.json();
             } catch (error) {
                 console.error('Error updating user balance:', error);
                 offlineQueue.push({ phone, balance, method: 'PUT' });
@@ -367,9 +370,11 @@
             }
             if (users[inputPhone].pin === pin) {
                 phone = inputPhone;
+                balance = users[phone].balance;
                 document.getElementById('login').style.display = 'none';
-                document.getElementById('game').style.display = 'block';
+                document.getElementById('game').style.display = 'block' if (gameState === 'running');
                 updateUserInfo();
+                sendUserInfoToUserInfo();
                 playBackgroundMusic();
                 updateUserActivity('Logged in');
                 startRealTimeUpdate();
@@ -395,25 +400,32 @@
                 const users = await fetchUsers();
                 users[phone].history.push({ date: new Date().toISOString(), activity: activity });
                 await updateUserData(phone, users[phone]);
-                window.postMessage({ type: 'updateUserInfo', phone: phone }, BASE_URL);
+                sendUserInfoToUserInfo();
+            }
+        }
+
+        function sendUserInfoToUserInfo() {
+            if (phone) {
+                window.postMessage({ type: 'updateUserInfo', phone: phone, data: { balance, history: (await fetchUsers())[phone]?.history || [] } }, `${BASE_URL}/userinfo.html`);
             }
         }
 
         function startRealTimeUpdate() {
             setInterval(async () => {
                 await updateUserInfo();
+                sendUserInfoToUserInfo();
             }, 1000);
         }
 
         function selectChip(amount) {
-            if (balance >= amount) {
+            if (balance >= amount && gameState === 'betting') {
                 totalBet += amount;
                 bets[totalBet] = amount;
                 updateUserActivity(`Selected chip: ${amount} MMK`);
                 alert(`ရွေးထားသော ချစ်ပ်: ${amount} MMK`);
                 updateBetInfo();
             } else {
-                alert('လက်ကျန်ငွေ မလုံလောက်ပါ');
+                alert('လက်ကျန်ငွေ မလုံလောက်ပါ ဒါမှမဟုတ် ဂိမ်းမစမူသေး');
             }
         }
 
@@ -422,7 +434,7 @@
         }
 
         async function placeBet(type) {
-            if (!totalBet || !gameState === 'betting' || balance < totalBet || timeLeft <= 7) return;
+            if (!totalBet || gameState !== 'betting' || balance < totalBet || timeLeft <= 7) return;
             const bet = { type: type, amount: totalBet, user: phone, multiplier: getMultiplier(type) };
             bets[phone] = bets[phone] || [];
             bets[phone].push(bet);
@@ -435,7 +447,7 @@
         }
 
         function getMultiplier(type) {
-            const multipliers = { '1': 36, '2': 36, '3': 36, '4': 36, '5': 36, '6': 36, '7': 36, '8': 36, '9': 36, '10': 36, '11': 36, '12': 36, '13': 36, '14': 36, '15': 36, '16': 36, '17': 36, '18': 36, '19': 36, '20': 36, '21': 36, '22': 36, '23': 36, '24': 36, '25': 36, '26': 36, '27': 36, '28': 36, '29': 36, '30': 36, '31': 36, '32': 36, '33': 36, '34': 36, '35': 36, '36': 36, '0': 36, 'red': 2, 'black': 2, 'odd': 2, 'even': 2, '1-18': 2, '19-36': 2, '1st12': 3, '2nd12': 3, '3rd12': 3 };
+            const multipliers = { '0': 36, '1': 36, '2': 36, '3': 36, '4': 36, '5': 36, '6': 36, '7': 36, '8': 36, '9': 36, '10': 36, '11': 36, '12': 36, '13': 36, '14': 36, '15': 36, '16': 36, '17': 36, '18': 36, '19': 36, '20': 36, '21': 36, '22': 36, '23': 36, '24': 36, '25': 36, '26': 36, '27': 36, '28': 36, '29': 36, '30': 36, '31': 36, '32': 36, '33': 36, '34': 36, '35': 36, '36': 36, 'red': 2, 'black': 2, 'odd': 2, 'even': 2, '1-18': 2, '19-36': 2, '1st12': 3, '2nd12': 3, '3rd12': 3 };
             return multipliers[type] || 1;
         }
 
@@ -450,26 +462,28 @@
         }
 
         function startGame() {
-            gameState = 'running';
-            document.getElementById('serverMsg').style.display = 'none';
-            document.getElementById('wheel-container').style.display = 'block';
-            const gameInterval = setInterval(() => {
-                timeLeft--;
-                document.getElementById('gameTime').innerText = timeLeft;
-                if (timeLeft <= 7) {
-                    gameState = 'spinning';
-                }
-                if (timeLeft <= 0) {
-                    clearInterval(gameInterval);
-                    spinWheel();
-                    timeLeft = 30;
-                    setTimeout(() => {
-                        document.getElementById('wheel-container').style.display = 'none';
-                        if (gameState === 'running') startGame();
-                    }, 6000);
-                }
-            }, 1000);
-            updateUserActivity('Game started');
+            if (gameState !== 'running') {
+                gameState = 'running';
+                document.getElementById('serverMsg').style.display = 'none';
+                document.getElementById('wheel-container').style.display = 'block';
+                const gameInterval = setInterval(() => {
+                    timeLeft--;
+                    document.getElementById('gameTime').innerText = timeLeft;
+                    if (timeLeft <= 7) {
+                        gameState = 'spinning';
+                    }
+                    if (timeLeft <= 0) {
+                        clearInterval(gameInterval);
+                        spinWheel();
+                        timeLeft = 30;
+                        setTimeout(() => {
+                            document.getElementById('wheel-container').style.display = 'none';
+                            if (gameState === 'running') startGame();
+                        }, 6000);
+                    }
+                }, 1000);
+                updateUserActivity('Game started');
+            }
         }
 
         function spinWheel() {
@@ -543,11 +557,11 @@
 
         window.addEventListener('message', (event) => {
             if (event.origin !== BASE_URL) return;
-            if (event.data.type === 'startGame' && event.data.password === adminPassword) {
+            if (event.data.type === 'startGame' && event.data.password === 'admin123') {
                 gameState = 'running';
                 startGame();
                 document.getElementById('game').style.display = 'block';
-            } else if (event.data.type === 'stopGame' && event.data.password === adminPassword) {
+            } else if (event.data.type === 'stopGame' && event.data.password === 'admin123') {
                 gameState = 'stopped';
                 document.getElementById('serverMsg').style.display = 'block';
                 document.getElementById('wheel-container').style.display = 'none';
@@ -565,7 +579,6 @@
             element.addEventListener('click', () => placeBet(element.getAttribute('data-value')));
         });
 
-        // Check network status
         window.addEventListener('online', syncOfflineQueue);
         window.addEventListener('offline', () => console.log('Offline mode activated'));
     </script>
