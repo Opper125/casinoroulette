@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Info</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; }
     </style>
 </head>
 <body>
@@ -22,8 +22,11 @@
             const pin = document.getElementById('pin').value;
             if (users[phone] && users[phone].pin === pin) {
                 document.getElementById('info').innerHTML = `
-                    <p>ဖုန်းနံပါတ်: ${phone}</p>
+                    <p>UserID: User${phone.slice(-4)}</p>
+                    <p>Phone: ${phone}</p>
                     <p>Balance: ${users[phone].balance} ကျပ်</p>
+                    <p>Play Time: ${users[phone].playTime} ကြိမ်</p>
+                    <p>History: ${JSON.stringify(users[phone].history)}</p>
                 `;
             } else {
                 alert('ဖုန်းနံပါတ် သို့မဟုတ် PIN မမှန်ပါ');
