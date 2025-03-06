@@ -5,32 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Panel</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 20px; background: #1a1a1a; color: white; }
+        body { font-family: Arial, sans-serif; background: #1a1a1a; color: white; margin: 0; padding: 20px; text-align: center; }
         input, button { margin: 10px; padding: 5px; }
         #userInfo { margin-top: 20px; }
+        #gameControl { margin: 10px 0; }
     </style>
 </head>
 <body>
     <h1>Admin Panel</h1>
-    <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
-    <button onclick="searchUser()">ရှာမည်</button>
-    <div id="userInfo"></div>
-    <div>
+    <input type="text" id="adminPass" placeholder="Admin Password">
+    <button onclick="loginAdmin()">Login</button>
+    <div id="adminPanel" style="display: none;">
+        <input type="text" id="searchPhone" placeholder="ဖုန်းနံပါတ်ရှာ">
+        <button onclick="searchUser()">ရှာမည်</button>
+        <div id="userInfo"></div>
         <input type="number" id="amount" placeholder="ငွေပမာဏ (ကျပ်)">
         <button onclick="deposit()">ငွေသွင်းမည်</button>
         <button onclick="withdraw()">ငွေထုတ်မည်</button>
+        <div id="gameControl">
+            <input type="password" id="gamePass" placeholder="Game Password">
+            <button onclick="startGame()">Game ဖွင့်မည်</button>
+            <button onclick="stopGame()">Game ပိတ်မည်</button>
+        </div>
     </div>
     <script>
         let users = JSON.parse(localStorage.getItem('users')) || {};
-        let currentPhone = '';
+        let adminLoggedIn = false;
+        let gameActive = false;
+        let adminPassword = "admin123";
+        let gamePassword = "game123";
+
+        function loginAdmin() {
+            if (document.getElementById('adminPass').value === adminPassword) {
+                adminLoggedIn = true;
+                document.getElementById('adminPanel').style.display = 'block';
+            } else {
+                alert('Admin Password မမှန်ပါ');
+            }
+        }
 
         function searchUser() {
+            if (!adminLoggedIn) return;
             const phone = document.getElementById('searchPhone').value;
             if (users[phone]) {
-                currentPhone = phone;
                 document.getElementById('userInfo').innerHTML = `
-                    <p>ဖုန်းနံပါတ်: ${phone}</p>
+                    <p>Phone: ${phone}</p>
                     <p>Balance: ${users[phone].balance} ကျပ်</p>
+                    <p>History: ${JSON.stringify(users[phone].history)}</p>
                 `;
             } else {
                 alert('အသုံးပြုသူ မတွေ့ပါ');
@@ -38,28 +59,52 @@
         }
 
         function deposit() {
+            if (!adminLoggedIn) return;
+            const phone = document.getElementById('searchPhone').value;
             const amount = parseInt(document.getElementById('amount').value);
-            if (currentPhone && amount > 0) {
-                users[currentPhone].balance += amount;
+            if (phone && amount > 0 && users[phone]) {
+                users[phone].balance += amount;
+                users[phone].history.push({ date: new Date().toLocaleDateString(), amount: amount, type: 'deposit' });
                 localStorage.setItem('users', JSON.stringify(users));
                 alert(`${amount} ကျပ် ငွေသွင်းပြီးပါပြီ`);
                 searchUser();
-            } else {
-                alert('ဖုန်းနံပါတ် သို့မဟုတ် ပမာဏ မမှန်ပါ');
             }
         }
 
         function withdraw() {
+            if (!adminLoggedIn) return;
+            const phone = document.getElementById('searchPhone').value;
             const amount = parseInt(document.getElementById('amount').value);
-            if (currentPhone && amount > 0 && users[currentPhone].balance >= amount) {
-                users[currentPhone].balance -= amount;
+            if (phone && amount > 0 && users[phone] && users[phone].balance >= amount) {
+                users[phone].balance -= amount;
+                users[phone].history.push({ date: new Date().toLocaleDateString(), amount: amount, type: 'withdraw' });
                 localStorage.setItem('users', JSON.stringify(users));
                 alert(`${amount} ကျပ် ငွေထုတ်ပြီးပါပြီ`);
                 searchUser();
-            } else {
-                alert('ငွေလုံလောက်မှု မရှိပါ သို့မဟုတ် ပမာဏ မမှန်ပါ');
             }
         }
+
+        function startGame() {
+            if (!adminLoggedIn || document.getElementById('gamePass').value !== gamePassword) return;
+            gameActive = true;
+            window.postMessage({ type: 'startGame' }, '*');
+            alert('Game စတင်ပါတယ်');
+        }
+
+        function stopGame() {
+            if (!adminLoggedIn || document.getElementById('gamePass').value !== gamePassword) return;
+            gameActive = false;
+            window.postMessage({ type: 'stopGame' }, '*');
+            alert('Game ပိတ်ပါတယ်');
+        }
+
+        window.addEventListener('message', (event) => {
+            if (event.data.type === 'startGame' && gameActive) {
+                document.getElementById('serverMsg').style.display = 'none';
+            } else if (event.data.type === 'stopGame' && !gameActive) {
+                document.getElementById('serverMsg').style.display = 'block';
+            }
+        });
     </script>
 </body>
 </html>
