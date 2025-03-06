@@ -52,7 +52,6 @@
             }
         });
 
-        // Real-time update for all users
         setInterval(async () => {
             const users = await fetchUsers();
             Object.keys(users).forEach(phone => {
