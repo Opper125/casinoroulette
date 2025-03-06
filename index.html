@@ -1,1 +1,32 @@
-
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Casino Roulette Game</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Casino Roulette Game</h1>
+        <div id="login-section">
+            <input type="text" id="phone" placeholder="ဖုန်းနံပါတ်">
+            <input type="password" id="pin" placeholder="PIN">
+            <button onclick="login()">Login</button>
+        </div>
+        <div id="game-section" style="display:none;">
+            <div id="roulette-wheel">
+                <img src="images/roulette-wheel.png" alt="Roulette Wheel">
+            </div>
+            <div id="chips">
+                <img src="images/chips.png" alt="Chips">
+            </div>
+            <div id="balance">
+                <p>Balance: <span id="user-balance">0</span> MMK</p>
+            </div>
+            <button onclick="spinWheel()">Spin</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
